@@ -1,9 +1,7 @@
 const { KYC_API_SECRET, SSI_API_SECRET, X_ISSUER_VERMETHOD_ID, X_ISSUER_DID, DEVELOPER_DASHBOARD_SERVICE_BASE_URL, DOMAIN, SSI_BASE_URL, KYC_BASE_URL } = require('./config')
-
+const TOKEN_FILE = path.join(__dirname, 'tokens.json');
 const fs = require('fs').promises;
 const path = require('path');
-
-const TOKEN_FILE = path.join(__dirname, 'tokens.json');
 
 
 async function generateAccessTokensForKYCandSSI(api_secret, type) {
@@ -22,46 +20,63 @@ async function generateAccessTokensForKYCandSSI(api_secret, type) {
     }
 }
 
-
-async function prepareAccessTokens() {
+// Helper function to decode JWT payload without external libraries
+function getJwtExpiry(token) {
     try {
-        let tokens = {};
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = Buffer.from(base64, 'base64').toString();
+        const payload = JSON.parse(jsonPayload);
 
-        // 1. Try to read existing tokens from the file
-        try {
-            const data = await fs.readFile(TOKEN_FILE, 'utf8');
-            tokens = JSON.parse(data);
-            console.log('Existing tokens loaded from file.');
-        } catch (err) {
-            console.log('No existing token file found. Generating new ones...');
-        }
-
-        // 2. Check if tokens exist in the object; if not, generate them
-        if (!tokens.KYC_ACCESS_TOKEN || !tokens.SSI_ACCESS_TOKEN) {
-
-            console.log('Generating KYC Access Token');
-            const KYC_ACCESS_TOKEN = await generateAccessTokensForKYCandSSI(KYC_API_SECRET, 'access_service_kyc');
-
-            console.log('Generating SSI Access Token');
-            const SSI_ACCESS_TOKEN = await generateAccessTokensForKYCandSSI(SSI_API_SECRET, 'access_service_ssi');
-
-            tokens = {
-                KYC_ACCESS_TOKEN,
-                SSI_ACCESS_TOKEN
-            };
-
-            // 3. Store the newly generated tokens into the file
-            await fs.writeFile(TOKEN_FILE, JSON.stringify(tokens, null, 2));
-            console.log('New tokens saved to file.');
-        }
-
-        return tokens;
-
+        // 'exp' is usually in seconds
+        return payload.exp ? payload.exp * 1000 : 0;
     } catch (e) {
-        console.error('Error in prepareAccessTokens:', e.message);
+        return 0; // If decoding fails, treat as expired
     }
 }
 
+async function prepareAccessTokens() {
+    try {
+        let cachedTokens = null;
+
+        // 1. Load from file
+        try {
+            const data = await fs.readFile(TOKEN_FILE, 'utf8');
+            cachedTokens = JSON.parse(data);
+        } catch (err) {
+            console.log('No token file found.');
+        }
+
+        const now = Date.now();
+
+        // 2. Validate existence and expiration for BOTH tokens
+        const isMissing = !cachedTokens || !cachedTokens.KYC_ACCESS_TOKEN || !cachedTokens.SSI_ACCESS_TOKEN;
+
+        // Check expiry if tokens exist (adding a 60-second buffer for safety)
+        const isExpired = !isMissing && (
+            getJwtExpiry(cachedTokens.KYC_ACCESS_TOKEN) <= (now + 60000) ||
+            getJwtExpiry(cachedTokens.SSI_ACCESS_TOKEN) <= (now + 60000)
+        );
+
+        if (isMissing || isExpired) {
+            console.log(isExpired ? 'Tokens are expired/expiring soon.' : 'Tokens missing.');
+
+            const KYC_ACCESS_TOKEN = await generateAccessTokensForKYCandSSI(KYC_API_SECRET, 'access_service_kyc');
+            const SSI_ACCESS_TOKEN = await generateAccessTokensForKYCandSSI(SSI_API_SECRET, 'access_service_ssi');
+
+            const tokensToSave = { KYC_ACCESS_TOKEN, SSI_ACCESS_TOKEN };
+
+            await fs.writeFile(TOKEN_FILE, JSON.stringify(tokensToSave, null, 2));
+            return tokensToSave;
+        }
+
+        console.log('Tokens are still valid. Reusing from cache.');
+        return cachedTokens;
+
+    } catch (e) {
+        console.error('Error:', e.message);
+    }
+}
 
 async function startSession(KYC_ACCESS_TOKEN) {
 
