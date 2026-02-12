@@ -135,7 +135,7 @@ async function getCachedAdminTokens() {
 async function generateKycUserSessionToken(claims, kycAdminToken, ssiAdminToken, sessionId) {
     try {
         // STEP 1: Request a DID-signed JWT from the SSI Service
-        const didJwt = await requestDidJwtSignature(claims, ssiAdminToken);
+        const didJwt = await requestDidJwtSignature(claims, ssiAdminToken, X_ISSUER_DID, X_ISSUER_VERMETHOD_ID);
 
         // STEP 2: Exchange the DID JWT for the final KYC User Access Token
         const kycUserAccessToken = await exchangeJwtForKycAccessToken(

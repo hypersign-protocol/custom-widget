@@ -1,3 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hypersign KYC Integration</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            max-width: 600px;
+            margin: 20px auto;
+            text-align: center;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        video,
+        canvas {
+            width: 100%;
+            border-radius: 8px;
+            background: #000;
+            margin: 10px 0;
+        }
+
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            cursor: pointer;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            margin: 5px;
+        }
+
+        .step-card {
+            border: 1px solid #ddd;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        #status-msg {
+            margin-top: 10px;
+            font-weight: bold;
+            color: #555;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h2>KYC Verification</h2>
+
+    <div id="app">
+        <div id="step-init" class="step-card">
+            <p>Ready to start your identity verification?</p>
+            <button onclick="startKycProcess()">Start Session</button>
+        </div>
+
+        <div id="camera-container" class="step-card hidden">
+            <h3 id="camera-title">Capture Document</h3>
+            <video id="video" autoplay playsinline></video>
+            <button id="capture-btn">Snap Photo</button>
+            <p id="status-msg"></p>
+            <canvas id="canvas" class="hidden"></canvas>
+        </div>
+
+        <div id="step-final" class="step-card hidden">
+            <h3 style="color: green;">Verification Complete!</h3>
+            <p id="result-text"></p>
+            <button onclick="location.reload()">Start New Session</button>
+        </div>
+    </div>
 <script>
     // Configuration Constants
     const KYC_BASE_URL = "https://api.cavach.hypersign.id";
@@ -24,9 +101,11 @@
             id: "",
             extractionToken: ""
         },
-        currentStep: "init"
+        currentStep: "init",
+        statusMsg :""
     };
 
+    const captureBtn = document.getElementById('capture-btn');
     /**
      * Step 1: Initialize Session
      * Fetches required tokens and session context from your local backend.
@@ -194,4 +273,52 @@
         document.getElementById('step-final').classList.remove('hidden');
         document.getElementById('result-text').innerText = `Verification Successful. Redirecting to: ${url || 'Dashboard'}`;
     }
+
+    // --- CAMERA UTILITY ---
+    async function showCameraUI(title, step) {
+        currentStep = step;
+        state.statusMsg.innerText = "";
+        document.querySelectorAll('.step-card').forEach(el => el.classList.add('hidden'));
+        document.getElementById('camera-container').classList.remove('hidden');
+        document.getElementById('camera-title').innerText = title;
+
+        // Use rear camera for docs, front camera for selfie
+        const constraints = {
+            video: { facingMode: step === "doc-extract" ? "environment" : "user" }
+        };
+
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            video.srcObject = stream;
+        } catch (err) {
+            alert("Camera access denied or not available.");
+        }
+    }
+
+    function stopCamera() {
+        if (video.srcObject) {
+            video.srcObject.getTracks().forEach(track => track.stop());
+        }
+    }
+
+    // --- CAPTURE CLICK HANDLER ---
+    captureBtn.onclick = async () => {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0);
+        const base64Image = canvas.toDataURL('image/jpeg');
+
+        stopCamera(); // Stop camera while processing
+        state.statusMsg.innerText = "Processing... please wait.";
+
+        if (currentStep === "doc-extract") {
+            await processDocumentExtraction(base64Image);
+        } else if (currentStep === "liveness") {
+            await performIdentityMatch(base64Image);
+        }
+    };
+    
 </script>
+</body>
+
+</html>

@@ -1,4 +1,4 @@
-const { SSI_BASE_URL } = require('./config')
+const { SSI_BASE_URL ,KYC_BASE_URL} = require('./config')
 
 /**
  * Registers a new Decentralized Identifier (DID) for a user via the SSI Service.
@@ -32,7 +32,7 @@ async function registerUserDid(ssiAdminToken, namespace = '') {
         const result = await response.json();
 
         // Navigate the metadata to find the specific Ed25519 verification method
-        const verificationMethods = result.metadata?.didDocument?.verificationMethods || [];
+        const verificationMethods = result.metaData?.didDocument?.verificationMethod || [];
         const targetMethod = verificationMethods.find(m => m.type === 'Ed25519VerificationKey2020');
 
         if (!targetMethod) {
@@ -53,8 +53,8 @@ async function registerUserDid(ssiAdminToken, namespace = '') {
 /**
  * STEP 1: Signs user claims using the Issuer's DID to create a verifiable JWT.
  */
-async function requestDidJwtSignature(claims, ssiAdminToken) {
-    const response = await fetch(`${SSI_BASE_URL}api/v1/did/auth/issue-jwt`, {
+async function requestDidJwtSignature(claims, ssiAdminToken, X_ISSUER_DID, X_ISSUER_VERMETHOD_ID) {
+    const response = await fetch(`${SSI_BASE_URL}/api/v1/did/auth/issue-jwt`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
