@@ -21,10 +21,17 @@ async function createDID(namespace = "", SSI_ACCESS_TOKEN) {
             throw new Error(`Error ${response.status}: ${JSON.stringify(errorData)}`);
         }
         const resp = await response.json();
-        return resp.did;
+        // type == Ed25519VerificationKey2020
+        return {
+            did: resp.did,
+            verficationMethodId: resp.metadata.didDocument.verficationMethods.find(x => x.type == 'Ed25519VerificationKey2020').id
+        };
     } catch (error) {
         console.error("Failed to create DID:", error);
         throw error;
     }
 }
+
+
+
 module.exports = { createDID }

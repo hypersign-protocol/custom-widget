@@ -1,8 +1,7 @@
 const { KYC_API_SECRET, SSI_API_SECRET, X_ISSUER_VERMETHOD_ID, X_ISSUER_DID, DEVELOPER_DASHBOARD_SERVICE_BASE_URL, DOMAIN, SSI_BASE_URL, KYC_BASE_URL } = require('./config')
-const TOKEN_FILE = path.join(__dirname, 'tokens.json');
 const fs = require('fs').promises;
 const path = require('path');
-
+const TOKEN_FILE = path.join(__dirname, 'tokens.json');
 
 async function generateAccessTokensForKYCandSSI(api_secret, type) {
     const path = "/api/v1/app/oauth"
@@ -78,16 +77,6 @@ async function prepareAccessTokens() {
     }
 }
 
-async function startSession(KYC_ACCESS_TOKEN) {
-
-    const res = await fetch(`${KYC_BASE_URL}/e-kyc/verification/session`, {
-        method: 'POST',
-        headers: { 'x-kyc-access-token': KYC_ACCESS_TOKEN }
-    });
-    const result = await res.json();
-    return result.data.sessionId;
-
-}
 
 // This API call can be skipp if did-jwt is used
 async function authenticateAndIssueKycUserAccessToken(claims, KYC_ACCESS_TOKEN, SSI_ACCESS_TOKEN, sessionId) {

@@ -90,6 +90,9 @@
         let X_ISSUER_DID = "";
         let X_ISSUER_VERMETHOD_ID = ""
 
+        let USER_DID = ""
+        let USER_DID_VERMETHOD_ID = ""
+
 
         // State Management
         let sessionId = "";
@@ -116,7 +119,8 @@
                 X_ISSUER_DID = json.X_ISSUER_DID
                 X_ISSUER_VERMETHOD_ID = json.X_ISSUER_VERMETHOD_ID
                 sessionId = json.sessionId
-                USER_DID= json.USER_DID
+                USER_DID = json.USER_DID
+                USER_DID_VERMETHOD_ID = json.USER_DID_VERMETHOD_ID
 
                 showCamera('Capture ID Card (Front)', 'doc-extract');
 
@@ -255,8 +259,7 @@
                 const result = await res.json();
                 if (result.success) {
                     credentials = result.data.credentials;
-                    saveCredentials(credentials);
-                    await handleUserConsent(credentials);
+                    handleUserConsent(credentials);
                     alert("Successful Verification");
                 }
             } catch (err) {
@@ -265,13 +268,15 @@
             }
         }
 
+
+
         // --- STEP 5: USER CONSENT (Submit) ---
         async function handleUserConsent(credentials) {
             try {
-                if (!credentials && credential.length === 0) {
-                    credentials = loadCredentials();
-                }
-                const presentation = await createPresentation(credentials, '123dasdfkfgjgfd', domain);
+                // if (!credentials && credential.length === 0) {
+                //     credentials = loadCredentials();
+                // }
+                const presentation = await createPresentation(credentials, sessionId);
                 const res = await fetch(`${KYC_BASE_URL}/e-kyc/verification/user-consent`, {
                     method: 'POST',
                     headers: {
@@ -295,24 +300,16 @@
             }
         }
 
-        /**
-         * Function to create/verify a presentation
-         * @param {Array} credentialDocuments - Array of VC objects
-         * @param {string} holderDid - The DID of the user (from createDID response)
-         * @param {string} verificationMethodId - The specific key ID from the DID document
-         * @param {string} challenge - A randomly generated string
-         * @param {string} domain - The domain of the verifier (e.g., "zkPass.com")
-         * @returns {Promise<Object>} The presentation response
-         */
-        async function createPresentation(credentialDocuments, challenge, domain) {
+
+        async function createPresentation(credentialDocuments, challenge) {
             const url =
                 `${SSI_BASE_URL}/presentation`
             const requestBody = {
                 credentialDocuments: credentialDocuments,
                 holderDid: USER_DID,
                 challenge: challenge,
-                domain: "https://hypermine.co/",
-                verificationMethodId: `${USER_DID}#key-1`
+                domain: window.location.origin,
+                verificationMethodId: USER_DID_VERMETHOD_ID
             };
             try {
                 const response = await fetch(url, {
@@ -333,22 +330,6 @@
                 console.error("Failed to create presentation:", error);
                 throw error;
             }
-        }
-
-        function loadCredentials() {
-            try {
-                const data = localStorage.getItem("credentials");
-                return data ? JSON.parse(data) : [];
-            } catch {
-                return [];
-            }
-        }
-
-        function saveCredentials(credentials) {
-            localStorage.setItem(
-                "credentials",
-                JSON.stringify(credentials, null, 2)
-            );
         }
     </script>
 </body>
