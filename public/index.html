@@ -123,7 +123,7 @@
         async function getRequiredTokensFromBackend() {
             try {
 
-                const resp = await fetch(`${window.origin.location}/get-required-tokens`)
+                const resp = await fetch(`${window.location.origin}/get-required-tokens`)
 
                 const json = await resp.json()
 
