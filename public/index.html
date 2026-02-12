@@ -58,7 +58,7 @@
     <div id="app">
         <div id="step-init" class="step-card">
             <p>Ready to start your identity verification?</p>
-            <button onclick="startSession()">Start Session</button>
+            <button onclick="getRequiredTokensFromBackend()">Start Session</button>
         </div>
 
         <div id="camera-container" class="step-card hidden">
@@ -79,7 +79,6 @@
     <script>
         const KYC_BASE_URL = "https://api.cavach.hypersign.id/api/v1";
         const SSI_BASE_URL = "https://api.entity.hypersign.id/api/v1";
-        const DEVELOPER_DASHBOARD_SERVICE_BASE_URL = "https://api.entity.dashboard.hypersign.id";
         const domain = "https://api.cavach.hypersign.id"
 
         let presentation;
@@ -104,26 +103,10 @@
         const captureBtn = document.getElementById('capture-btn');
         const statusMsg = document.getElementById('status-msg');
 
-        // async function generateAccessTokensForKYCandSSI(api_secret, type) {
-        //     const path = "/api/v1/app/oauth"
-
-        //     try {
-        //         const res = await fetch(`${DEVELOPER_DASHBOARD_SERVICE_BASE_URL}${path}?grant_type=${type}`, {
-        //             method: 'POST',
-        //             headers: { 'X-Api-Secret-Key': api_secret }
-        //         });
-        //         const result = await res.json();
-        //         return result.access_token
-
-        //     } catch (e) {
-        //         console.error(e.message)
-        //     }
-        // }
-
         async function getRequiredTokensFromBackend() {
             try {
 
-                const resp = await fetch(`${window.location.origin}/get-required-tokens`)
+                const resp = await fetch(`${window.location.origin}/get-required-tokens-and-session-for-a-user`)
 
                 const json = await resp.json()
 
@@ -132,6 +115,9 @@
                 BEARER_AUTH_TOKEN = json.USER_BEARER_AUTH_TOKEN
                 X_ISSUER_DID = json.X_ISSUER_DID
                 X_ISSUER_VERMETHOD_ID = json.X_ISSUER_VERMETHOD_ID
+                sessionId = json.sessionId
+
+                showCamera('Capture ID Card (Front)', 'doc-extract');
 
             } catch (e) {
                 console.error(e.message)
@@ -165,55 +151,8 @@
             }
         }
 
-        // async function prepareAccessTokens() {
-        //     const SSI_API_SECRET = "8a24231b3ff4257bdea0de4e7f37e.082b03cf87842a5076b0b2c40ee9b32883a9c2b7bb2e1eb68b2078dd992f1fda09b868e9ee27d3c8f270c7721113cf433"
-        //     const KYC_API_SECRET = "2940babfe5b14499a1fed50722209.7b17d2b8650a9ea6f82f8553f4080e5b93381ccb8c89ba746b61d4597715cde8a4f68d5d6367f531b73aa69e26fb95707"
-
-        //     try {
-
-        //         console.log('Generating KYC Access Token')
-        //         // KYC Access Token
-        //         KYC_ACCESS_TOKEN = await generateAccessTokensForKYCandSSI(KYC_API_SECRET, 'access_service_kyc')
-
-        //         console.log('Generating SSI Access Token')
-        //         // SSI Access Token 
-        //         SSI_ACCESS_TOKEN = await generateAccessTokensForKYCandSSI(SSI_API_SECRET, 'access_service_ssi')
-
-
-        //         // User Access Tokens
-        //         let USER_DID = "did:hid:888fc73f-0d4d-40fc-9ae2-432a426befe6";
-        //         const USER_NAME = "varsha kumari2";
-        //         const USER_EMAIL = "9061varsha2@gmail.com";
-        //         const userData = {
-        //             name: USER_NAME,
-        //             email: USER_EMAIL, //
-        //             userDid: USER_DID,
-        //         }
-        //         console.log('Generating User Access Token')
-        //         BEARER_AUTH_TOKEN = await authenticateAndIssueKycUserAccessToken(userData);
-
-        //     } catch (e) {
-        //         console.error(e.message)
-        //     }
-
-
-        // }
-
         // --- STEP 1: START SESSION ---
-
-        async function startSession() {
-            try {
-                await getRequiredTokensFromBackend()
-                const res = await fetch(`${KYC_BASE_URL}/e-kyc/verification/session`, {
-                    method: 'POST',
-                    headers: { 'x-kyc-access-token': KYC_ACCESS_TOKEN }
-                });
-                const result = await res.json();
-                sessionId = result.data.sessionId;
-
-                showCamera("Capture ID Card (Front)", "doc-extract");
-            } catch (err) { alert("Session Init Failed"); }
-        }
+        // showCamera("Capture ID Card (Front)", "doc-extract");
 
         // --- CAPTURE CLICK HANDLER ---
         captureBtn.onclick = async () => {
@@ -248,7 +187,7 @@
                         'Content-Type': 'application/json',
                         'x-kyc-access-token': KYC_ACCESS_TOKEN,
                         'X-Ssi-Access-Token': SSI_ACCESS_TOKEN,
-                        'Authorization': BEARER_AUTH_TOKEN
+                        'Authorization': `Bearer ${BEARER_AUTH_TOKEN}`
                     },
                     body: JSON.stringify({
                         tokenFrontDocumentImage: base64Image,
@@ -301,7 +240,7 @@
                         'X-Ssi-Access-Token': SSI_ACCESS_TOKEN,
                         'x-issuer-did': X_ISSUER_DID,
                         'x-issuer-did-ver-method': X_ISSUER_VERMETHOD_ID,
-                        'Authorization': BEARER_AUTH_TOKEN
+                        'Authorization': `Bearer ${BEARER_AUTH_TOKEN}`
                     },
                     body: JSON.stringify({
                         extractionToken: extractionToken,
@@ -338,7 +277,7 @@
                         'Content-Type': 'application/json',
                         'x-kyc-access-token': KYC_ACCESS_TOKEN,
                         'X-Ssi-Access-Token': SSI_ACCESS_TOKEN,
-                        'Authorization': BEARER_AUTH_TOKEN
+                        'Authorization': `Bearer ${BEARER_AUTH_TOKEN}`
                     },
                     body: JSON.stringify({
                         sessionId: sessionId,
@@ -354,40 +293,6 @@
                 alert("Final submission failed");
             }
         }
-
-
-        /**
-         * Function to create a DID
-         * @param {string} namespace - The network namespace (e.g., "" for mainnet or "testnet")
-         * @returns {Promise<Object>} The DID creation response
-         */
-        // async function createDID(namespace = "") {
-        //     const url = `${SSI_BASE_URL}/did/create`;
-        //     const requestBody = {
-        //         namespace: namespace
-        //     };
-
-        //     try {
-        //         const response = await fetch(url, {
-        //             method: 'POST',
-        //             headers: {
-        //                 'Content-Type': 'application/json',
-        //                 'Authorization': 'Bearer ' + SSI_ACCESS_TOKEN
-        //             },
-        //             body: JSON.stringify(requestBody)
-        //         });
-
-        //         if (!response.ok) {
-        //             const errorData = await response.json();
-        //             throw new Error(`Error ${response.status}: ${JSON.stringify(errorData)}`);
-        //         }
-
-        //         return await response.json();
-        //     } catch (error) {
-        //         console.error("Failed to create DID:", error);
-        //         throw error;
-        //     }
-        // }
 
         /**
          * Function to create/verify a presentation
@@ -429,55 +334,6 @@
             }
         }
 
-        // async function authenticateAndIssueKycUserAccessToken(claims) {
-        //     const data = await fetch(`${SSI_BASE_URL}/did/auth/issue-jwt`, {
-        //         method: "POST",
-        //         headers: {
-        //             "Content-Type": "application/json",
-        //             "Authorization": `Bearer ${SSI_ACCESS_TOKEN}`,
-        //         },
-        //         body: JSON.stringify({
-        //             "issuer": {
-        //                 "verificationmethodId": `${X_ISSUER_DID}#key-1`,
-        //                 "did": `${X_ISSUER_DID}`
-        //             },
-        //             "audience": domain,
-        //             "claims": claims,
-        //             "ttlSeconds": 3600
-
-        //         })
-
-        //     })
-        //     if (!data.ok) {
-        //         const err = await data.text();
-        //         throw new Error(`Token API failed: ${err}`);
-        //     }
-        //     const json = await data.json();
-        //     const token = await getBearerToken(json.accessToken)
-        //     return `Bearer ${token}`
-        // }
-        // async function getBearerToken(didJwtToken) {
-        //     const data = await fetch(`${KYC_BASE_URL}/e-kyc/verification/auth`, {
-        //         method: "POST",
-        //         headers: {
-        //             "Content-Type": "application/json",
-        //             "x-ssi-access-token": SSI_ACCESS_TOKEN,
-        //             "x-kyc-access-token": KYC_ACCESS_TOKEN,
-        //             "Authorization": `Bearer ${didJwtToken}`,
-        //         },
-        //         body: JSON.stringify({
-        //             provider: "third-party-auth",
-        //             sessionId
-        //         })
-        //     })
-        //     if (!data.ok) {
-        //         const err = await data.text();
-        //         throw new Error(`Token API failed to generate kycUserAccessToken: ${err}`);
-        //     }
-        //     const json = await data.json();
-        //     return json.data.kycServiceUserAccessToken
-        // }
-
         function loadCredentials() {
             try {
                 const data = localStorage.getItem("credentials");
@@ -493,7 +349,6 @@
                 JSON.stringify(credentials, null, 2)
             );
         }
-
     </script>
 </body>
 
