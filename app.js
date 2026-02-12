@@ -1,7 +1,7 @@
 const express = require('express');
 const path = require('path');
-const { prepareAccessTokens, authenticateAndIssueKycUserAccessToken } = require('./generateTokens')
-
+const { prepareAccessTokens, authenticateAndIssueKycUserAccessToken, startSession } = require('./generateTokens')
+const { createDID } = require('./ssi')
 const app = express();
 const PORT = 3007;
 
@@ -23,7 +23,7 @@ app.get('/get-required-tokens-and-session-for-a-user', async (req, res) => {
         // 3.1 Prepare User Data
 
         // 3.1.1 Prepare User DID
-        let USER_DID = "did:hid:888fc73f-0d4d-40fc-9ae2-432a426befe6"; // await createDID()
+        let USER_DID = await createDID('', SSI_ACCESS_TOKEN);
 
         // 3.1.2 Prepare User claims
         const USER_NAME = "varsha kumari2";
@@ -45,7 +45,8 @@ app.get('/get-required-tokens-and-session-for-a-user', async (req, res) => {
             USER_BEARER_AUTH_TOKEN,
             X_ISSUER_DID,
             X_ISSUER_VERMETHOD_ID,
-            sessionId
+            sessionId,
+            USER_DID,
         })
     } catch (e) {
         res.status(400).json(e.message)

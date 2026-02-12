@@ -20,10 +20,11 @@ async function createDID(namespace = "", SSI_ACCESS_TOKEN) {
             const errorData = await response.json();
             throw new Error(`Error ${response.status}: ${JSON.stringify(errorData)}`);
         }
-
-        return await response.json();
+        const resp = await response.json();
+        return resp.did;
     } catch (error) {
         console.error("Failed to create DID:", error);
         throw error;
     }
 }
+module.exports = { createDID }

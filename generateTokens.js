@@ -75,7 +75,7 @@ async function startSession(KYC_ACCESS_TOKEN) {
 }
 
 // This API call can be skipp if did-jwt is used
-async function authenticateAndIssueKycUserAccessToken(claims, KYC_ACCESS_TOKEN, SSI_ACCESS_TOKEN) {
+async function authenticateAndIssueKycUserAccessToken(claims, KYC_ACCESS_TOKEN, SSI_ACCESS_TOKEN, sessionId) {
     const data = await fetch(`${SSI_BASE_URL}/did/auth/issue-jwt`, {
         method: "POST",
         headers: {
