@@ -1,8 +1,8 @@
 const express = require('express');
 const path = require('path');
-const { prepareAccessTokens, authenticateAndIssueKycUserAccessToken } = require('./generateTokens')
+const { getCachedAdminTokens, generateKycUserSessionToken } = require('./tokenService')
 const { startSession } = require('./idService')
-const { createDID } = require('./ssi')
+const { createDID } = require('./ssiService')
 const app = express();
 const PORT = 3007;
 
@@ -12,50 +12,65 @@ app.use(express.json());
 
 const { X_ISSUER_VERMETHOD_ID, X_ISSUER_DID } = require('./config')
 
+/**
+ * @openapi
+ * /get-required-tokens-and-session-for-a-user
+ * @get
+ * @description 
+ * Orchestrates the full onboarding handshake for a new KYC user. 
+ * This endpoint performs the following sequence:
+ * 1. Retrieves or refreshes administrative tokens for KYC and SSI services.
+ * 2. Initializes a new KYC verification session.
+ * 3. Registers a unique DID (Decentralized Identifier) for the user.
+ * 4. Generates a scoped User Bearer Auth Token using a DID-signed JWT.
+ * * @param {Object} req - Express request object.
+ * @param {Object} res - Express response object.
+ * * @returns {JSON} 200 - An object containing all necessary tokens, session details, and user DID metadata.
+ * @returns {JSON} 400 - An error message if any step in the handshake sequence fails.
+ */
 app.get('/get-required-tokens-and-session-for-a-user', async (req, res) => {
-
     try {
-        // 3. Prepare Access Tokens for SSI and KYC
-        const { KYC_ACCESS_TOKEN, SSI_ACCESS_TOKEN } = await prepareAccessTokens();
+        // 1. Prepare Administrative Access Tokens (using file-based cache)
+        const { kycAdminToken, ssiAdminToken } = await getCachedAdminTokens();
 
-        const sessionId = await startSession(KYC_ACCESS_TOKEN)
+        // 2. Initialize the KYC Verification Session
+        const sessionId = await initializeVerificationSession(kycAdminToken);
 
-        // 3. Generate User access Token 
-        // 3.1 Prepare User Data
+        // 3. Register a new User DID
+        const userDidMetadata = await registerUserDid(ssiAdminToken);
 
-        // 3.1.1 Prepare User DID
-        let userDIDmetadata = await createDID('', SSI_ACCESS_TOKEN);
-
-        // 3.1.2 Prepare User claims
-        const USER_NAME = "varsha kumari2";
-        const USER_EMAIL = "9061varsha2@gmail.com";
+        // 4. Prepare User Claims for the DID JWT
         const userData = {
-            name: USER_NAME,
-            email: USER_EMAIL, // manadatory
-            userDid: userDIDmetadata.did, // mandatory
-        }
+            name: "John",
+            email: "john@gmail.com", // Mandatory
+            userDid: userDidMetadata.did, // Mandatory
+        };
 
-        console.log({
-            KYC_ACCESS_TOKEN, SSI_ACCESS_TOKEN
-        })
-        const USER_BEARER_AUTH_TOKEN = await authenticateAndIssueKycUserAccessToken(userData, KYC_ACCESS_TOKEN, SSI_ACCESS_TOKEN, sessionId);
+        // 5. Generate the final User-specific Bearer Token
+        const userBearerToken = await generateKycUserSessionToken(
+            userData,
+            kycAdminToken,
+            ssiAdminToken,
+            sessionId
+        );
 
+        // 6. Return comprehensive credentials to the client
         res.json({
-            KYC_ACCESS_TOKEN,
-            SSI_ACCESS_TOKEN,
-            USER_BEARER_AUTH_TOKEN,
-            X_ISSUER_DID,
-            X_ISSUER_VERMETHOD_ID,
+            kycAdminToken,
+            ssiAdminToken,
+            userBearerToken,
+            issuerDid: X_ISSUER_DID,
+            issuerVerificationMethodId: X_ISSUER_VERMETHOD_ID,
             sessionId,
-            USER_DID: userDIDmetadata.did,
-            USER_DID_VERMETHOD_ID: userDIDmetadata.verficationMethodId
-        })
-    } catch (e) {
-        res.status(400).json(e.message)
+            userDid: userDidMetadata.did,
+            userVerificationMethodId: userDidMetadata.verificationMethodId
+        });
+
+    } catch (error) {
+        console.error(`[Onboarding Flow Error]: ${error.message}`);
+        res.status(400).json({ error: error.message });
     }
-
-
-})
+});
 
 // Explicit route for index.html (optional but clear)
 app.get('/', (req, res) => {
