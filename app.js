@@ -3,14 +3,14 @@ const path = require('path');
 const { getCachedAdminTokens, generateKycUserSessionToken } = require('./tokenService')
 const { initializeVerificationSession } = require('./idService')
 const { registerUserDid } = require('./ssiService')
+const { X_ISSUER_VERMETHOD_ID, X_ISSUER_DID } = require('./config')
+
 const app = express();
 const PORT = 3007;
 
 // Serve static files from public folder
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
-
-const { X_ISSUER_VERMETHOD_ID, X_ISSUER_DID } = require('./config')
 
 /**
  * @openapi
@@ -28,25 +28,34 @@ const { X_ISSUER_VERMETHOD_ID, X_ISSUER_DID } = require('./config')
  * * @returns {JSON} 200 - An object containing all necessary tokens, session details, and user DID metadata.
  * @returns {JSON} 400 - An error message if any step in the handshake sequence fails.
  */
-app.get('/get-required-tokens-and-session-for-a-user', async (req, res) => {
+app.post('/get-required-tokens-and-session-for-a-user', async (req, res) => {
     try {
-        // 1. Prepare Administrative Access Tokens (using file-based cache)
+        // 1. Extract and Validate input from request body
+        const { name, email } = req.body;
+
+        if (!name || !email) {
+            return res.status(400).json({
+                error: "Missing required fields: 'name' and 'email' are mandatory."
+            });
+        }
+
+        // 2. Prepare Administrative Access Tokens (using file-based cache)
         const { kycAdminToken, ssiAdminToken } = await getCachedAdminTokens();
 
-        // 2. Initialize the KYC Verification Session
+        // 3. Initialize the KYC Verification Session
         const sessionId = await initializeVerificationSession(kycAdminToken);
 
-        // 3. Register a new User DID
+        // 4. Register a new User DID
         const userDidMetadata = await registerUserDid(ssiAdminToken);
 
-        // 4. Prepare User Claims for the DID JWT
+        // 5. Prepare User Claims using dynamic data from request
         const userData = {
-            name: "John",
-            email: "john@gmail.com", // Mandatory
-            userDid: userDidMetadata.did, // Mandatory
+            name: name,             // mandatory
+            email: email,           // mandatory
+            userDid: userDidMetadata.did,
         };
 
-        // 5. Generate the final User-specific Bearer Token
+        // 6. Generate the final User-specific Bearer Token
         const userBearerToken = await generateKycUserSessionToken(
             userData,
             kycAdminToken,
@@ -54,7 +63,7 @@ app.get('/get-required-tokens-and-session-for-a-user', async (req, res) => {
             sessionId
         );
 
-        // 6. Return comprehensive credentials to the client
+        // 7. Return comprehensive credentials to the client
         res.json({
             kycAdminToken,
             ssiAdminToken,
@@ -68,7 +77,7 @@ app.get('/get-required-tokens-and-session-for-a-user', async (req, res) => {
 
     } catch (error) {
         console.error(`[Onboarding Flow Error]: ${error.message}`);
-        res.status(400).json({ error: error.message });
+        res.status(500).json({ error: error.message });
     }
 });
 

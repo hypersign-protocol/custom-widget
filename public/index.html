@@ -57,14 +57,29 @@
 
     <div id="app">
         <div id="step-init" class="step-card">
-            <p>Ready to start your identity verification?</p>
-            <button onclick="startKycProcess()">Start Session</button>
+            <p>Please enter your details to begin identity verification.</p>
+
+            <div class="input-group" style="margin-bottom: 15px; text-align: left;">
+                <label for="user-name" style="display: block; margin-bottom: 5px;">Full Name</label>
+                <input type="text" id="user-name" placeholder="John Doe"
+                    style="width: 100%; padding: 8px; box-sizing: border-box;">
+            </div>
+
+            <div class="input-group" style="margin-bottom: 20px; text-align: left;">
+                <label for="user-email" style="display: block; margin-bottom: 5px;">Email Address</label>
+                <input type="email" id="user-email" placeholder="john@example.com"
+                    style="width: 100%; padding: 8px; box-sizing: border-box;">
+            </div>
+
+            <button onclick="validateAndStart()">Start ID Verification</button>
         </div>
 
         <div id="camera-container" class="step-card hidden">
             <h3 id="camera-title">Capture Document</h3>
-            <video id="video" autoplay playsinline></video>
-            <button id="capture-btn">Snap Photo</button>
+            <video id="video" autoplay playsinline style="width: 100%; max-width: 400px; border-radius: 8px;"></video>
+            <div style="margin-top: 10px;">
+                <button id="capture-btn">Snap Photo</button>
+            </div>
             <p id="status-msg"></p>
             <canvas id="canvas" class="hidden"></canvas>
         </div>
@@ -72,253 +87,283 @@
         <div id="step-final" class="step-card hidden">
             <h3 style="color: green;">Verification Complete!</h3>
             <p id="result-text"></p>
-            <button onclick="location.reload()">Start New Session</button>
+            <button onclick="location.reload()">Start ID Verification</button>
         </div>
     </div>
-<script>
-    // Configuration Constants
-    const KYC_BASE_URL = "https://api.cavach.hypersign.id";
-    const SSI_BASE_URL = "https://api.entity.hypersign.id";
+    <script>
+        // Configuration Constants
+        const KYC_BASE_URL = "https://api.cavach.hypersign.id";
+        const SSI_BASE_URL = "https://api.entity.hypersign.id";
 
-    /** * Application State Object 
-     * Centralizes all tokens and IDs generated during the flow.
-     */
-    const state = {
-        tokens: {
-            kycAdmin: "",
-            ssiAdmin: "",
-            userBearer: ""
-        },
-        issuer: {
-            did: "",
-            methodId: ""
-        },
-        user: {
-            did: "",
-            methodId: ""
-        },
-        session: {
-            id: "",
-            extractionToken: ""
-        },
-        currentStep: "init",
-        statusMsg :""
-    };
+        /** * Application State Object 
+         * Centralizes all tokens and IDs generated during the flow.
+         */
+        const state = {
+            tokens: {
+                kycAdmin: "",
+                ssiAdmin: "",
+                userBearer: ""
+            },
+            issuer: {
+                did: "",
+                methodId: ""
+            },
+            user: {
+                did: "",
+                methodId: ""
+            },
+            session: {
+                id: "",
+                extractionToken: ""
+            },
+            currentStep: "init",
+            statusMsg: ""
+        };
 
-    const captureBtn = document.getElementById('capture-btn');
-    /**
-     * Step 1: Initialize Session
-     * Fetches required tokens and session context from your local backend.
-     */
-    async function startKycProcess() {
-        updateStatus("Initializing session...");
-        try {
-            const response = await fetch(`${window.location.origin}/get-required-tokens-and-session-for-a-user`);
-            if (!response.ok) throw new Error("Failed to reach backend");
+        const captureBtn = document.getElementById('capture-btn');
 
-            const data = await response.json();
+        function validateAndStart() {
+            const name = document.getElementById('user-name').value.trim();
+            const email = document.getElementById('user-email').value.trim();
 
-            // Map backend response to local state
-            state.tokens.kycAdmin = data.kycAdminToken;
-            state.tokens.ssiAdmin = data.ssiAdminToken;
-            state.tokens.userBearer = data.userBearerToken;
-            state.issuer.did = data.issuerDid;
-            state.issuer.methodId = data.issuerVerificationMethodId;
-            state.session.id = data.sessionId;
-            state.user.did = data.userDid;
-            state.user.methodId = data.userVerificationMethodId;
+            if (!name || !email) {
+                alert("Name and Email are required to start verification.");
+                return;
+            }
 
-            showCameraUI('Capture ID Card (Front)', 'doc-extract');
-        } catch (error) {
-            handleError("Initialization Error", error);
+            // Pass the UI values into the async process
+            startKycProcess(name, email);
         }
-    }
 
-    /**
-     * Step 2: Document OCR Extraction
-     * Sends the base64 image of the document to the KYC service.
-     */
-    async function processDocumentExtraction(base64Image) {
-        updateStatus("Extracting data from document...");
-        try {
-            const response = await fetch(`${KYC_BASE_URL}/api/v1/e-kyc/verification/doc-ocr/extract`, {
-                method: 'POST',
-                headers: createHeaders(true),
-                body: JSON.stringify({
-                    tokenFrontDocumentImage: base64Image,
-                    sessionId: state.session.id,
-                    documentType: "PASSPORT"
-                })
-            });
+        /**
+         * Step 1: Initialize Session
+         * Fetches required tokens and session context from your local backend.
+         */
+        async function startKycProcess(name, email) {
+            updateStatus("Initializing session...");
+            try {
+                // Constructing the request to pass user data to the backend
+                const response = await fetch(`${window.location.origin}/get-required-tokens-and-session-for-a-user`, {
+                    method: 'POST', // Changed to POST to support request body
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        name: name,
+                        email: email
+                    })
+                });
 
-            const result = await response.json();
-            if (!result.success) throw new Error(result.message || "Extraction failed");
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || "Failed to reach backend");
+                }
 
-            state.session.extractionToken = result.data.extractionToken;
-            showCameraUI("Take a Live Selfie", "liveness");
-        } catch (error) {
-            handleError("OCR Error", error);
+                const data = await response.json();
+
+                // Map backend response to local state
+                state.tokens.kycAdmin = data.kycAdminToken;
+                state.tokens.ssiAdmin = data.ssiAdminToken;
+                state.tokens.userBearer = data.userBearerToken;
+                state.issuer.did = data.issuerDid;
+                state.issuer.methodId = data.issuerVerificationMethodId;
+                state.session.id = data.sessionId;
+                state.user.did = data.userDid;
+                state.user.methodId = data.userVerificationMethodId;
+
+                // Transition to UI
+                showCameraUI('Capture ID Card (Front)', 'doc-extract');
+
+            } catch (error) {
+                handleError("Initialization Error", error);
+            }
         }
-    }
 
-    /**
-     * Step 3: Face Match & Identity Verification
-     * Matches the selfie against the extracted document data.
-     */
-    async function performIdentityMatch(base64Selfie) {
-        updateStatus("Verifying identity match...");
-        try {
-            const response = await fetch(`${KYC_BASE_URL}/api/v1/e-kyc/verification/doc-ocr`, {
+        /**
+         * Step 2: Document OCR Extraction
+         * Sends the base64 image of the document to the KYC service.
+         */
+        async function processDocumentExtraction(base64Image) {
+            updateStatus("Extracting data from document...");
+            try {
+                const response = await fetch(`${KYC_BASE_URL}/api/v1/e-kyc/verification/doc-ocr/extract`, {
+                    method: 'POST',
+                    headers: createHeaders(true),
+                    body: JSON.stringify({
+                        tokenFrontDocumentImage: base64Image,
+                        sessionId: state.session.id,
+                        documentType: "PASSPORT"
+                    })
+                });
+
+                const result = await response.json();
+                if (!result.success) throw new Error(result.message || "Extraction failed");
+
+                state.session.extractionToken = result.data.extractionToken;
+                showCameraUI("Take a Live Selfie", "liveness");
+            } catch (error) {
+                handleError("OCR Error", error);
+            }
+        }
+
+        /**
+         * Step 3: Face Match & Identity Verification
+         * Matches the selfie against the extracted document data.
+         */
+        async function performIdentityMatch(base64Selfie) {
+            updateStatus("Verifying identity match...");
+            try {
+                const response = await fetch(`${KYC_BASE_URL}/api/v1/e-kyc/verification/doc-ocr`, {
+                    method: 'POST',
+                    headers: {
+                        ...createHeaders(true),
+                        'x-issuer-did': state.issuer.did,
+                        'x-issuer-did-ver-method': state.issuer.methodId
+                    },
+                    body: JSON.stringify({
+                        extractionToken: state.session.extractionToken,
+                        sessionId: state.session.id,
+                        tokenFaceImage: base64Selfie,
+                        bestImageTokenized: base64Selfie,
+                        userDID: state.user.did,
+                        countryCode: "IND"
+                    })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    await submitUserConsent(result.data.credentials);
+                } else {
+                    throw new Error("Identity match failed.");
+                }
+            } catch (error) {
+                handleError("Verification Error", error);
+            }
+        }
+
+        /**
+         * Step 4: User Consent & Presentation
+         * Signs the verifiable credentials and completes the session.
+         */
+        async function submitUserConsent(credentials) {
+            updateStatus("Finalizing verification...");
+            try {
+                const vp = await createSsiPresentation(credentials);
+                const response = await fetch(`${KYC_BASE_URL}/api/v1/e-kyc/verification/user-consent`, {
+                    method: 'POST',
+                    headers: createHeaders(true),
+                    body: JSON.stringify({
+                        sessionId: state.session.id,
+                        presentation: vp.presentation
+                    })
+                });
+
+                const result = await response.json();
+                displayFinalStep(result.data.redirectUrl);
+            } catch (error) {
+                handleError("Consent Error", error);
+            }
+        }
+
+        /**
+         * Helper: Creates Verifiable Presentation via SSI Service
+         */
+        async function createSsiPresentation(credentialDocuments) {
+            const response = await fetch(`${SSI_BASE_URL}/api/v1/presentation`, {
                 method: 'POST',
                 headers: {
-                    ...createHeaders(true),
-                    'x-issuer-did': state.issuer.did,
-                    'x-issuer-did-ver-method': state.issuer.methodId
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${state.tokens.ssiAdmin}`
                 },
                 body: JSON.stringify({
-                    extractionToken: state.session.extractionToken,
-                    sessionId: state.session.id,
-                    tokenFaceImage: base64Selfie,
-                    bestImageTokenized: base64Selfie,
-                    userDID: state.user.did,
-                    countryCode: "IND"
+                    credentialDocuments,
+                    holderDid: state.user.did,
+                    challenge: state.session.id,
+                    domain: window.location.origin,
+                    verificationMethodId: state.user.methodId
                 })
             });
-
-            const result = await response.json();
-            if (result.success) {
-                await submitUserConsent(result.data.credentials);
-            } else {
-                throw new Error("Identity match failed.");
-            }
-        } catch (error) {
-            handleError("Verification Error", error);
+            return await response.json();
         }
-    }
 
-    /**
-     * Step 4: User Consent & Presentation
-     * Signs the verifiable credentials and completes the session.
-     */
-    async function submitUserConsent(credentials) {
-        updateStatus("Finalizing verification...");
-        try {
-            const vp = await createSsiPresentation(credentials);
-            const response = await fetch(`${KYC_BASE_URL}/api/v1/e-kyc/verification/user-consent`, {
-                method: 'POST',
-                headers: createHeaders(true),
-                body: JSON.stringify({
-                    sessionId: state.session.id,
-                    presentation: vp.presentation
-                })
-            });
-
-            const result = await response.json();
-            displayFinalStep(result.data.redirectUrl);
-        } catch (error) {
-            handleError("Consent Error", error);
-        }
-    }
-
-    /**
-     * Helper: Creates Verifiable Presentation via SSI Service
-     */
-    async function createSsiPresentation(credentialDocuments) {
-        const response = await fetch(`${SSI_BASE_URL}/api/v1/presentation`, {
-            method: 'POST',
-            headers: {
+        /**
+         * Utility: Generates repeated headers for KYC/SSI calls
+         */
+        function createHeaders(includeUserToken = false) {
+            const headers = {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${state.tokens.ssiAdmin}`
-            },
-            body: JSON.stringify({
-                credentialDocuments,
-                holderDid: state.user.did,
-                challenge: state.session.id,
-                domain: window.location.origin,
-                verificationMethodId: state.user.methodId
-            })
-        });
-        return await response.json();
-    }
+                'x-kyc-access-token': state.tokens.kycAdmin,
+                'X-Ssi-Access-Token': state.tokens.ssiAdmin
+            };
+            if (includeUserToken) {
+                headers['Authorization'] = `Bearer ${state.tokens.userBearer}`;
+            }
+            return headers;
+        }
 
-    /**
-     * Utility: Generates repeated headers for KYC/SSI calls
-     */
-    function createHeaders(includeUserToken = false) {
-        const headers = {
-            'Content-Type': 'application/json',
-            'x-kyc-access-token': state.tokens.kycAdmin,
-            'X-Ssi-Access-Token': state.tokens.ssiAdmin
+        // --- UI Logic Helpers ---
+
+        function updateStatus(msg) {
+            document.getElementById('status-msg').innerText = msg;
+        }
+
+        function handleError(title, err) {
+            console.error(`${title}:`, err);
+            alert(`${title}: ${err.message}`);
+            location.reload();
+        }
+
+        function displayFinalStep(url) {
+            document.getElementById('camera-container').classList.add('hidden');
+            document.getElementById('step-final').classList.remove('hidden');
+            document.getElementById('result-text').innerText = `Verification Successful. Redirecting to: ${url || 'Dashboard'}`;
+        }
+
+        // --- CAMERA UTILITY ---
+        async function showCameraUI(title, step) {
+            currentStep = step;
+            state.statusMsg.innerText = "";
+            document.querySelectorAll('.step-card').forEach(el => el.classList.add('hidden'));
+            document.getElementById('camera-container').classList.remove('hidden');
+            document.getElementById('camera-title').innerText = title;
+
+            // Use rear camera for docs, front camera for selfie
+            const constraints = {
+                video: { facingMode: step === "doc-extract" ? "environment" : "user" }
+            };
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                video.srcObject = stream;
+            } catch (err) {
+                alert("Camera access denied or not available.");
+            }
+        }
+
+        function stopCamera() {
+            if (video.srcObject) {
+                video.srcObject.getTracks().forEach(track => track.stop());
+            }
+        }
+
+        // --- CAPTURE CLICK HANDLER ---
+        captureBtn.onclick = async () => {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+            const base64Image = canvas.toDataURL('image/jpeg');
+
+            stopCamera(); // Stop camera while processing
+            state.statusMsg.innerText = "Processing... please wait.";
+
+            if (currentStep === "doc-extract") {
+                await processDocumentExtraction(base64Image);
+            } else if (currentStep === "liveness") {
+                await performIdentityMatch(base64Image);
+            }
         };
-        if (includeUserToken) {
-            headers['Authorization'] = `Bearer ${state.tokens.userBearer}`;
-        }
-        return headers;
-    }
 
-    // --- UI Logic Helpers ---
-
-    function updateStatus(msg) {
-        document.getElementById('status-msg').innerText = msg;
-    }
-
-    function handleError(title, err) {
-        console.error(`${title}:`, err);
-        alert(`${title}: ${err.message}`);
-        location.reload();
-    }
-
-    function displayFinalStep(url) {
-        document.getElementById('camera-container').classList.add('hidden');
-        document.getElementById('step-final').classList.remove('hidden');
-        document.getElementById('result-text').innerText = `Verification Successful. Redirecting to: ${url || 'Dashboard'}`;
-    }
-
-    // --- CAMERA UTILITY ---
-    async function showCameraUI(title, step) {
-        currentStep = step;
-        state.statusMsg.innerText = "";
-        document.querySelectorAll('.step-card').forEach(el => el.classList.add('hidden'));
-        document.getElementById('camera-container').classList.remove('hidden');
-        document.getElementById('camera-title').innerText = title;
-
-        // Use rear camera for docs, front camera for selfie
-        const constraints = {
-            video: { facingMode: step === "doc-extract" ? "environment" : "user" }
-        };
-
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia(constraints);
-            video.srcObject = stream;
-        } catch (err) {
-            alert("Camera access denied or not available.");
-        }
-    }
-
-    function stopCamera() {
-        if (video.srcObject) {
-            video.srcObject.getTracks().forEach(track => track.stop());
-        }
-    }
-
-    // --- CAPTURE CLICK HANDLER ---
-    captureBtn.onclick = async () => {
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        canvas.getContext('2d').drawImage(video, 0, 0);
-        const base64Image = canvas.toDataURL('image/jpeg');
-
-        stopCamera(); // Stop camera while processing
-        state.statusMsg.innerText = "Processing... please wait.";
-
-        if (currentStep === "doc-extract") {
-            await processDocumentExtraction(base64Image);
-        } else if (currentStep === "liveness") {
-            await performIdentityMatch(base64Image);
-        }
-    };
-    
-</script>
+    </script>
 </body>
 
 </html>
