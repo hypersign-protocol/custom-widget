@@ -257,7 +257,6 @@ async function performIdentityMatch(base64Selfie) {
             tokenFaceImage: base64Selfie,
             bestImageTokenized: base64Selfie, // Backup reference image
             userDID: state.user.did,
-            countryCode: "IND"
         })
     });
 
