@@ -62,7 +62,7 @@ async function requestDidJwtSignature(claims, ssiAdminToken) {
         },
         body: JSON.stringify({
             issuer: {
-                verificationmethodId: X_ISSUER_VERMETHOD_ID,
+                verificationMethodId: X_ISSUER_VERMETHOD_ID,
                 did: X_ISSUER_DID
             },
             audience: KYC_BASE_URL,
