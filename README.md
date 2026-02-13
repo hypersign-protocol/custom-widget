@@ -1,5 +1,5 @@
 # Custom Widget Demo
-This project demonstrates how to integrate and customize the Hypersign KYC and SSI APIs. It provides a streamlined implementation for identity verification and decentralized identifier (DID) management.
+This project demonstrates how to integrate and customize the Hypersign KYC and SSI APIs. It provides a streamlined implementation for identity verification via Hypersign KYC APIs.
 
 ## 🚀 Getting Started
 ### Prerequisites
