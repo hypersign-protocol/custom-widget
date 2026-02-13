@@ -1,15 +1,15 @@
 # Custom Widget Demo
-This project demonstrates how to integrate and customize the Hypersign KYC and SSI APIs. It provides a streamlined implementation for identity verification via Hypersign KYC APIs.
+This project demonstrates how to integrate and customize the [Hypersign](https://hypersign.id) KYC and SSI APIs. It provides a streamlined implementation for identity verification via [Hypersign](https://hypersign.id) KYC APIs.
 
 ## 🚀 Getting Started
 ### Prerequisites
 - Node.js: v16.x or higher
 - npm: v8.x or higher
-- Hypersign Credentials: You must have an account on the Hypersign Dashboard.
+- Hypersign Credentials: You must have an account on the [Hypersign Dashboard](https://entity.dashboard.hypersign.id/).
 
 ### Setup
 
-Environment Variables Clone the sample environment file and populate it with your secrets from the Hypersign Dashboard.
+Environment Variables Clone the sample environment file and populate it with your secrets from the [Hypersign Dashboard](https://entity.dashboard.hypersign.id/).
 
 ```
 mv .env-sample .env
