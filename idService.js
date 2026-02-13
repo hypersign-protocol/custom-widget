@@ -12,7 +12,7 @@ const { KYC_BASE_URL } = require('./config')
  */
 async function initializeVerificationSession(kycAdminToken) {
     try {
-        const response = await fetch(`${KYC_BASE_URL}/api/v1/e-kyc/verification/session`, {
+        const response = await fetch(`${KYC_BASE_URL}/api/v2/session`, {
             method: 'POST',
             headers: {
                 'x-kyc-access-token': kycAdminToken,
@@ -56,7 +56,7 @@ async function initializeVerificationSession(kycAdminToken) {
  * * @returns {Promise<string>} A promise that resolves to the `kycServiceUserAccessToken` string.
  */
 async function exchangeJwtForKycAccessToken(didJwt, kycAdminToken, ssiAdminToken, sessionId) {
-    const response = await fetch(`${KYC_BASE_URL}/api/v1/e-kyc/verification/auth`, {
+    const response = await fetch(`${KYC_BASE_URL}/api/v2/auth/exchange`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
@@ -65,7 +65,7 @@ async function exchangeJwtForKycAccessToken(didJwt, kycAdminToken, ssiAdminToken
             "Authorization": `Bearer ${didJwt}`,
         },
         body: JSON.stringify({
-            provider: "third-party-auth",
+            provider: "client_auth",
             sessionId
         })
     });
