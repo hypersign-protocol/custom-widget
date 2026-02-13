@@ -9,8 +9,8 @@ const SSI_BASE_URL = process.env.SSI_BASE_URL;
 
 const DEVELOPER_DASHBOARD_SERVICE_BASE_URL = process.env.DEVELOPER_DASHBOARD_SERVICE_BASE_URL;
 // 2. Create Issuer Account
-const X_ISSUER_DID = "did:hid:z6Mkih2GSH8hMhFXGXw387cK76v7V4PUhFUu8TNWUkXsEAGu";
-const X_ISSUER_VERMETHOD_ID = "did:hid:z6Mkih2GSH8hMhFXGXw387cK76v7V4PUhFUu8TNWUkXsEAGu#key-1"
+const X_ISSUER_DID = process.env.ISSUER_DID;
+const X_ISSUER_VERMETHOD_ID = process.env.ISSUER_VERMETHOD_ID;
 
 
 module.exports = {

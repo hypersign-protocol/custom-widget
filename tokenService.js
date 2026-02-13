@@ -84,6 +84,7 @@ async function getCachedAdminTokens() {
         cachedData = JSON.parse(fileContent);
     } catch (err) {
         // File doesn't exist or is invalid JSON; we proceed to fetch fresh tokens
+        console.error(err.message)
     }
 
     const now = Date.now();
@@ -135,7 +136,7 @@ async function getCachedAdminTokens() {
 async function generateKycUserSessionToken(claims, kycAdminToken, ssiAdminToken, sessionId) {
     try {
         // STEP 1: Request a DID-signed JWT from the SSI Service
-        const didJwt = await requestDidJwtSignature(claims, ssiAdminToken, X_ISSUER_DID, X_ISSUER_VERMETHOD_ID);
+        const didJwt = await requestDidJwtSignature(claims, ssiAdminToken);
 
         // STEP 2: Exchange the DID JWT for the final KYC User Access Token
         const kycUserAccessToken = await exchangeJwtForKycAccessToken(

@@ -11,15 +11,22 @@ This project demonstrates how to integrate and customize the [Hypersign](https:/
 
 Environment Variables Clone the sample environment file and populate it with your secrets from the [Hypersign Dashboard](https://entity.dashboard.hypersign.id/).
 
-```
+```bash
 mv .env-sample .env
 ```
 
 Edit the `.env` file:
 
-```
+```bash
 KYC_API_SECRET = your_kyc_secret_here
 SSI_API_SECRET = your_ssi_secret_here
+```
+
+also add your Issuer details (you can copy Issuer details from the dashboard)
+
+```bash
+ISSUER_DID = "your issuer did here"
+ISSUER_VERMETHOD_ID = "your issuer ver method id"
 ```
 
 ### Installation Install the necessary dependencies:

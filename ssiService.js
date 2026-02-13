@@ -1,4 +1,4 @@
-const { SSI_BASE_URL ,KYC_BASE_URL} = require('./config')
+const { SSI_BASE_URL, KYC_BASE_URL, X_ISSUER_VERMETHOD_ID, X_ISSUER_DID } = require('./config')
 
 /**
  * Registers a new Decentralized Identifier (DID) for a user via the SSI Service.
@@ -53,7 +53,7 @@ async function registerUserDid(ssiAdminToken, namespace = '') {
 /**
  * STEP 1: Signs user claims using the Issuer's DID to create a verifiable JWT.
  */
-async function requestDidJwtSignature(claims, ssiAdminToken, X_ISSUER_DID, X_ISSUER_VERMETHOD_ID) {
+async function requestDidJwtSignature(claims, ssiAdminToken) {
     const response = await fetch(`${SSI_BASE_URL}/api/v1/did/auth/issue-jwt`, {
         method: "POST",
         headers: {
@@ -73,7 +73,7 @@ async function requestDidJwtSignature(claims, ssiAdminToken, X_ISSUER_DID, X_ISS
 
     if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`SSI JWT Issuance failed: ${response.status} - ${errorText}`);
+        throw new Error(`DID JWT Issuance failed: ${response.status} - ${errorText}`);
     }
 
     const result = await response.json();

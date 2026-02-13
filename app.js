@@ -1,7 +1,7 @@
 const express = require('express');
 const path = require('path');
 const { getCachedAdminTokens, generateKycUserSessionToken } = require('./tokenService')
-const { startSession, initializeVerificationSession } = require('./idService')
+const { initializeVerificationSession } = require('./idService')
 const { registerUserDid } = require('./ssiService')
 const app = express();
 const PORT = 3007;
