@@ -17,8 +17,9 @@ The integration follows a **Security-First Handshake** model:
 
 ### Service URLs
 ```js
-const KYC_BASE_URL = "[https://api.cavach.hypersign.id](https://api.cavach.hypersign.id)";
-const SSI_BASE_URL = "[https://api.entity.hypersign.id](https://api.entity.hypersign.id)";
+const KYC_BASE_URL = "https://api.cavach.hypersign.id";
+const SSI_BASE_URL = "https://api.entity.hypersign.id";
+const DEVELOPER_DASHBOARD_SERVICE_BASE_URL = "https://api.entity.dashboard.hypersign.id"
 ```
 
 ### Prerequisite Setup
