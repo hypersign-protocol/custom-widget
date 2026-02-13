@@ -41,3 +41,10 @@ The Custom Widget provides a comprehensive identity verification suite, includin
 - **Selfie Capture**: A guided UI for users to take high-quality headshots for verification.
 - **Face Authentication**: Comparison of the live selfie against the ID document photo to ensure the user is the rightful owner.
 - **User Consent**: A built-in legal and privacy layer to capture and log explicit user permission for data processing.
+
+
+## 📖 Documentation
+For a deep dive into the technical implementation, API hooks, and advanced configuration, please refer to our detailed guide:
+
+👉 [Detailed Integration Guide](./integration-doc.md)
+
