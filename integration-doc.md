@@ -62,8 +62,9 @@ async function fetchAdminAccessToken(apiSecret, serviceType) {
 Create a unique session for the user's verification journey.
 
 ```js
-async function initializeVerificationSession(kycAdminToken) {
-  const response = await fetch(`${KYC_BASE_URL}/api/v1/e-kyc/verification/session`, {
+async function initializeVerificationSession
+(kycAdminToken){
+  const response = await fetch(`${KYC_BASE_URL}/api/v2/session`, {
     method: 'POST',
     headers: {
         'x-kyc-access-token': kycAdminToken,
@@ -121,7 +122,7 @@ async function generateKycUserSessionToken(claims, kycAdminToken, ssiAdminToken,
     const { accessToken: didJwt } = await ssiRes.json();
 
     // B. Exchange JWT for the KYC User Access Token
-    const kycRes = await fetch(`${KYC_BASE_URL}/api/v1/e-kyc/verification/auth`, {
+    const kycRes = await fetch(`${KYC_BASE_URL}/api/v2/auth/exchange`, {
         method: "POST",
         headers: {
             "x-ssi-access-token": ssiAdminToken,
@@ -129,7 +130,7 @@ async function generateKycUserSessionToken(claims, kycAdminToken, ssiAdminToken,
             "Authorization": `Bearer ${didJwt}`,
             "Content-Type": "application/json"
         },
-        body: JSON.stringify({ provider: "third-party-auth", sessionId })
+        body: JSON.stringify({ provider: "client_auth", sessionId })
     });
     const finalResult = await kycRes.json();
     return finalResult.data.kycServiceUserAccessToken;
@@ -218,7 +219,7 @@ After capturing the ID document via the camera, send the Base64 image for extrac
 
 ```js
 async function processDocumentExtraction(base64Image) {
-    const response = await fetch(`${KYC_BASE_URL}/api/v1/e-kyc/verification/doc-ocr/extract`, {
+    const response = await fetch(`${KYC_BASE_URL}/api/v2/documents/extract`, {
         method: 'POST',
         headers: {
             'x-kyc-access-token': state.tokens.kycAdmin,
@@ -226,7 +227,7 @@ async function processDocumentExtraction(base64Image) {
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-            tokenFrontDocumentImage: base64Image,
+            documentFront: base64Image,
             sessionId: state.session.id,
             documentType: "PASSPORT" 
         })
@@ -242,7 +243,7 @@ Matches the selfie against the extracted document data.
 
 ```js
 async function performIdentityMatch(base64Selfie) {
-    const response = await fetch(`${KYC_BASE_URL}/api/v1/e-kyc/verification/doc-ocr`, {
+    const response = await fetch(`${KYC_BASE_URL}/api/v2/biometrics/verify`, {
         method: 'POST',
         headers: {
             'x-kyc-access-token': state.tokens.kycAdmin,
@@ -252,11 +253,10 @@ async function performIdentityMatch(base64Selfie) {
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-            extractionToken: state.session.extractionToken,
+            documentToken: state.session.extractionToken,
             sessionId: state.session.id,
-            tokenFaceImage: base64Selfie,
-            bestImageTokenized: base64Selfie, // Backup reference image
-            userDID: state.user.did,
+            selfieImage: base64Selfie,
+            holderDid: state.user.did,
         })
     });
 
@@ -290,7 +290,7 @@ async function submitUserConsent(credentials) {
     const vpData = await vpRes.json();
 
     // 2. Submit Final Consent to KYC Service
-    await fetch(`${KYC_BASE_URL}/api/v1/e-kyc/verification/user-consent`, {
+    await fetch(`${KYC_BASE_URL}/api/v2/consents`, {
         method: 'POST',
         headers: { 
             'x-kyc-access-token': state.tokens.kycAdmin,

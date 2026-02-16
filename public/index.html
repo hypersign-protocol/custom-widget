@@ -186,11 +186,11 @@
         async function processDocumentExtraction(base64Image) {
             updateStatus("Extracting data from document...");
             try {
-                const response = await fetch(`${KYC_BASE_URL}/api/v1/e-kyc/verification/doc-ocr/extract`, {
+                const response = await fetch(`${KYC_BASE_URL}/api/v2/documents/extract`, {
                     method: 'POST',
                     headers: createHeaders(true),
                     body: JSON.stringify({
-                        tokenFrontDocumentImage: base64Image,
+                        documentFront: base64Image,
                         sessionId: state.session.id,
                         documentType: "PASSPORT"
                     })
@@ -213,7 +213,7 @@
         async function performIdentityMatch(base64Selfie) {
             updateStatus("Verifying identity match...");
             try {
-                const response = await fetch(`${KYC_BASE_URL}/api/v1/e-kyc/verification/doc-ocr`, {
+                const response = await fetch(`${KYC_BASE_URL}/api/v2/biometrics/verify`, {
                     method: 'POST',
                     headers: {
                         ...createHeaders(true),
@@ -221,11 +221,10 @@
                         'x-issuer-did-ver-method': state.issuer.methodId
                     },
                     body: JSON.stringify({
-                        extractionToken: state.session.extractionToken,
+                        documentToken: state.session.extractionToken,
                         sessionId: state.session.id,
-                        tokenFaceImage: base64Selfie,
-                        bestImageTokenized: base64Selfie,
-                        userDID: state.user.did,
+                        selfieImage: base64Selfie,
+                        holderDid: state.user.did,
                     })
                 });
 
@@ -248,7 +247,7 @@
             updateStatus("Finalizing verification...");
             try {
                 const vp = await createSsiPresentation(credentials);
-                const response = await fetch(`${KYC_BASE_URL}/api/v1/e-kyc/verification/user-consent`, {
+                const response = await fetch(`${KYC_BASE_URL}/api/v2/consents`, {
                     method: 'POST',
                     headers: createHeaders(true),
                     body: JSON.stringify({
