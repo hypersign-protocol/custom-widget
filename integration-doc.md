@@ -93,7 +93,7 @@ async function registerUserDid(ssiAdminToken) {
     const result = await res.json();
     
     // Find the Ed25519 key method required for signatures
-    const method = result.metadata.didDocument.verificationMethods
+    const method = result.metaData.didDocument.verificationMethod
                    .find(m => m.type === 'Ed25519VerificationKey2020');
 
     return {
@@ -223,13 +223,14 @@ async function processDocumentExtraction(base64Image) {
         method: 'POST',
         headers: {
             'x-kyc-access-token': state.tokens.kycAdmin,
+            'x-ssi-access-token': state.tokens.ssiAdmin,
             'Authorization': `Bearer ${state.tokens.userBearer}`,
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({
             documentFront: base64Image,
             sessionId: state.session.id,
-            documentType: "PASSPORT" 
+            documentType: "PASSPORT" // enum value
         })
     });
 
@@ -237,6 +238,11 @@ async function processDocumentExtraction(base64Image) {
     state.session.extractionToken = result.data.extractionToken;
 }
 ```
+**documentType** (enum)
+
+Allowed values:
+- `PASSPORT`
+- `GOVT_ID`
 
 ### Step 3: Identity Verification (Face Match)
 Matches the selfie against the extracted document data.
@@ -247,6 +253,7 @@ async function performIdentityMatch(base64Selfie) {
         method: 'POST',
         headers: {
             'x-kyc-access-token': state.tokens.kycAdmin,
+            'x-ssi-access-token': state.tokens.ssiAdmin,
             'x-issuer-did': state.issuer.did,
             'x-issuer-did-ver-method': state.issuer.methodId,
             'Authorization': `Bearer ${state.tokens.userBearer}`,
