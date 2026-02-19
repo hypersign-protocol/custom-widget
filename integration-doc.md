@@ -113,7 +113,7 @@ async function generateKycUserSessionToken(claims, kycAdminToken, ssiAdminToken,
         method: "POST",
         headers: { "Authorization": `Bearer ${ssiAdminToken}`, "Content-Type": "application/json" },
         body: JSON.stringify({
-            issuer: { verificationmethodId: X_ISSUER_VERMETHOD_ID, did: X_ISSUER_DID },
+            issuer: { verificationMethodId: X_ISSUER_VERMETHOD_ID, did: X_ISSUER_DID },
             audience: KYC_BASE_URL,
             claims: claims,
             ttlSeconds: 3600
